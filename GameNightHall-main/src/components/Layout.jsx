@@ -39,6 +39,8 @@ import {
     Bell,
     Package,
     AlertTriangle,
+    Sun,
+    Moon,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 
@@ -56,6 +58,7 @@ export default function Layout() {
     const location = useLocation()
     const [sidebarOpen, setSidebarOpen] = useState(false)
     const [editProfileOpen, setEditProfileOpen] = useState(false)
+    const [isDark, setIsDark] = useState(false)
     const [profileData, setProfileData] = useState({
         name: '',
         email: '',
@@ -70,6 +73,23 @@ export default function Layout() {
     const lowStockDrinks = drinks.filter(d => d.stock !== null && d.stock !== undefined && d.stock < (settings?.lowStockThreshold ?? 5))
     const [notifOpen, setNotifOpen] = useState(false)
     const prevLowCountRef = useRef(0)
+
+    useEffect(() => {
+        // Sync local state with the current document theme class
+        setIsDark(document.documentElement.classList.contains('dark'))
+    }, [])
+
+    const toggleTheme = () => {
+        const next = !isDark
+        setIsDark(next)
+        document.documentElement.classList.toggle('dark', next)
+        try {
+            localStorage.setItem('theme', next ? 'dark' : 'light')
+        } catch (e) {
+            // ignore
+        }
+    }
+
     useEffect(() => {
         if (lowStockDrinks.length > prevLowCountRef.current) {
             setNotifOpen(true)
@@ -185,7 +205,7 @@ export default function Layout() {
     }
 
     return (
-        <div className="min-h-screen flex pool-bg">
+        <div className="min-h-screen flex pool-bg overflow-x-hidden">
             {/* Mobile overlay */}
             {sidebarOpen && (
                 <div
@@ -223,8 +243,8 @@ export default function Layout() {
 
                 <Separator className="opacity-50 shrink-0" />
 
-                {/* Navigation - takes available space but doesn't scroll */}
-                <nav className="flex-1 p-4 space-y-1 overflow-hidden">
+                {/* Navigation - scrolls if too tall */}
+                <nav className="flex-1 p-4 space-y-1 overflow-y-auto overscroll-contain">
                     {navItems
                         .filter(item => {
                             // Hide dashboard for non-superadmin users
@@ -410,10 +430,19 @@ export default function Layout() {
                         </div>
 
                         <div className="flex items-center gap-3">
+                            <button
+                                onClick={toggleTheme}
+                                className="p-2 rounded-full hover:bg-accent/50 transition-colors"
+                                title={isDark ? 'Basculer en mode clair' : 'Basculer en mode sombre'}
+                            >
+                                {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                            </button>
+
                             <div className="hidden md:flex items-center gap-2 text-xs text-muted-foreground bg-card/50 px-3 py-1.5 rounded-full border border-border/50">
                                 <div className="w-2 h-2 rounded-full bg-orange-400 animate-pulse" />
                                 Système en ligne
                             </div>
+
                             {/* Low-stock notification bell */}
                             {lowStockDrinks.length > 0 && (
                                 <button

@@ -42,10 +42,10 @@ export default {
           foreground: "hsl(var(--card-foreground))",
         },
         orange: {
-          400: '#ffb40c',
-          500: '#ffb40c',
-          600: '#e6a20b',
-          700: '#cc900a',
+          400: '#a855f7',
+          500: '#8b5cf6',
+          600: '#7c3aed',
+          700: '#6d28d9',
         },
       },
       borderRadius: {

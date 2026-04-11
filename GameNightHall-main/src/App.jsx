@@ -11,6 +11,8 @@ import Dashboard from '@/pages/Dashboard'
 import Players from '@/pages/Players'
 import Boissons from '@/pages/Boissons'
 
+console.log('🚀 App component loaded')
+
 function ProtectedRoute({ children }) {
     const { user, loading } = useAuth()
 

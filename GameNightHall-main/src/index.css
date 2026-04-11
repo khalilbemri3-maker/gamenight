@@ -4,30 +4,64 @@
 
 @layer base {
   :root {
-    --background: 224 71% 4%;
-    --foreground: 213 31% 91%;
-    --card: 224 71% 6%;
-    --card-foreground: 213 31% 91%;
-    --popover: 224 71% 6%;
-    --popover-foreground: 213 31% 91%;
+    /* Light mode colors */
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
     --primary: 38 100% 52%;
     --primary-foreground: 0 0% 0%;
     --secondary: 222 47% 11%;
-    --secondary-foreground: 213 31% 91%;
-    --muted: 223 47% 11%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 210 16% 93%;
     --muted-foreground: 215 20% 55%;
     --accent: 216 34% 17%;
     --accent-foreground: 213 31% 91%;
     --destructive: 0 63% 31%;
     --destructive-foreground: 210 40% 98%;
-    --border: 216 34% 17%;
-    --input: 216 34% 17%;
+    --border: 220 10% 85%;
+    --input: 220 10% 96%;
     --ring: 38 100% 52%;
     --radius: 0.75rem;
+  }
+
+  /* Dark mode overrides (apply by adding 'dark' class to <html> or <body>) */
+  .dark {
+    --background: 231 35% 7%;
+    --foreground: 210 20% 96%;
+    --card: 229 24% 12%;
+    --card-foreground: 210 20% 96%;
+    --popover: 229 24% 12%;
+    --popover-foreground: 210 20% 96%;
+    --primary: 231 79% 63%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 199 100% 69%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 229 24% 15%;
+    --muted-foreground: 210 20% 70%;
+    --accent: 207 76% 52%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 78% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 229 24% 18%;
+    --input: 229 24% 15%;
+    --ring: 231 79% 63%;
   }
 }
 
 @layer base {
+  html,
+  body {
+    height: 100%;
+    overflow-x: hidden;
+  }
+
+  #root {
+    min-height: 100%;
+  }
+
   * {
     @apply border-border;
   }
@@ -35,6 +69,8 @@
   body {
     @apply bg-background text-foreground;
     font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    background-attachment: fixed;
   }
 }
 
@@ -65,11 +101,11 @@
 
 /* Glow effects */
 .glow-emerald {
-  box-shadow: 0 0 20px rgba(255, 180, 12, 0.15), 0 0 60px rgba(255, 180, 12, 0.05);
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.15), 0 0 60px rgba(168, 85, 247, 0.05);
 }
 
 .glow-emerald-strong {
-  box-shadow: 0 0 20px rgba(255, 180, 12, 0.3), 0 0 60px rgba(255, 180, 12, 0.1);
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.3), 0 0 60px rgba(168, 85, 247, 0.1);
 }
 
 .glow-red {
@@ -82,7 +118,7 @@
 
 /* Gradient text */
 .gradient-text {
-  background: linear-gradient(135deg, #ffb40c 0%, #ffc34d 50%, #ffa500 100%);
+  background: linear-gradient(135deg, #a855f7 0%, #8b5cf6 50%, #c084fc 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

@@ -12,6 +12,7 @@ export function AuthProvider({ children }) {
 
     // Check active session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('🔐 [AUTH] Session check result:', session ? 'Session found' : 'No session')
       if (session?.user) {
         console.log('✅ [AUTH] Active session found:', session.user.email)
         setUser({
@@ -23,6 +24,9 @@ export function AuthProvider({ children }) {
       } else {
         console.log('ℹ️ [AUTH] No active session')
       }
+      setLoading(false)
+    }).catch(error => {
+      console.error('❌ [AUTH] Error checking session:', error)
       setLoading(false)
     })
 

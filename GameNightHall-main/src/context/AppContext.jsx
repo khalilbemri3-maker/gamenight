@@ -14,34 +14,34 @@ import { useAuth } from '@/context/AuthContext'
 
 const AppContext = createContext(null)
 
+// Helper function to calculate current elapsed time for a counter
+function getCurrentElapsed(counter) {
+  if (!counter.active || !counter.startTime) return 0
+  const startTimestamp = new Date(counter.startTime).getTime()
+  return Math.floor((Date.now() - startTimestamp) / 1000)
+}
+
 function createInitialCounters(counters) {
   // Counters now come from DB with their state already set
   return counters.map(counter => {
     if (counter.active && counter.startTime) {
-      // Calculate elapsed time from start_time stored in DB
-      const startTimestamp = new Date(counter.startTime).getTime()
-      const elapsed = Math.floor((Date.now() - startTimestamp) / 1000)
-
       // Extract multiplier from drinks metadata
       const multiplierMeta = counter.drinks?.find(d => d.__multiplier)
       const multiplier = multiplierMeta?.__multiplier || 1
 
       console.log('✅ [APPCONTEXT] Restoring counter from DB:', counter.name, {
         startTime: counter.startTime,
-        elapsed: `${Math.floor(elapsed / 60)}m ${elapsed % 60}s`,
         multiplier,
         startedBy: counter.startedBy,
       })
 
       return {
         ...counter,
-        elapsed,
         multiplier,
       }
     }
     return {
       ...counter,
-      elapsed: 0,
       multiplier: 1,
     }
   })
@@ -60,7 +60,6 @@ export function AppProvider({ children }) {
   })
   const [players, setPlayers] = useState([])
   const [loading, setLoading] = useState(true)
-  const intervalRefs = useRef({})
 
   // Initial data load
   useEffect(() => {
@@ -90,7 +89,7 @@ export function AppProvider({ children }) {
 
         setLoading(false)
       } catch (error) {
-        console.error('Error loading data:', error)
+        console.error('❌ [APPCONTEXT] Error loading data:', error)
         setLoading(false)
       }
     }
@@ -113,7 +112,7 @@ export function AppProvider({ children }) {
   // Refresh counters from storage
   const refreshCounters = useCallback(async () => {
     const data = await getCounters()
-    // Initialize elapsed time for active counters
+    // Initialize counters without elapsed time (calculated on-demand)
     const initialized = createInitialCounters(data)
     setCounters(initialized)
   }, [])
@@ -130,24 +129,6 @@ export function AppProvider({ children }) {
     setDrinks(data)
   }, [])
 
-  // Timer logic
-  useEffect(() => {
-    counters.forEach(counter => {
-      if (counter.active && !intervalRefs.current[counter.id]) {
-        intervalRefs.current[counter.id] = setInterval(() => {
-          setCounters(prev => prev.map(c =>
-            c.id === counter.id ? { ...c, elapsed: c.elapsed + 1 } : c
-          ))
-        }, 1000)
-      } else if (!counter.active && intervalRefs.current[counter.id]) {
-        clearInterval(intervalRefs.current[counter.id])
-        delete intervalRefs.current[counter.id]
-      }
-    })
-
-    return () => { }
-  }, [counters.map(c => c.active).join(',')])
-
   const startCounter = useCallback(async (counterId, multiplier = 1) => {
     const now = new Date().toISOString()
     const userEmail = user?.email || user?.id || 'unknown'
@@ -155,7 +136,7 @@ export function AppProvider({ children }) {
     // Update state immediately for UI responsiveness
     setCounters(prev => prev.map(c =>
       c.id === counterId
-        ? { ...c, active: true, startTime: now, elapsed: 0, drinks: [], multiplier, startedBy: userEmail }
+        ? { ...c, active: true, startTime: now, drinks: [], multiplier, startedBy: userEmail }
         : c
     ))
     // Persist to database (multiplier stored in drinks as metadata for now)
@@ -171,15 +152,13 @@ export function AppProvider({ children }) {
     const counter = counters.find(c => c.id === counterId)
     if (!counter) return null
 
-    if (intervalRefs.current[counterId]) {
-      clearInterval(intervalRefs.current[counterId])
-      delete intervalRefs.current[counterId]
-    }
+    // Calculate current elapsed time
+    const currentElapsed = getCurrentElapsed(counter)
 
     // Calculate price based on counter type settings
     const settings = counterSettings[counter.type] || {}
     const multiplier = counter.multiplier || 1
-    const counterPrice = calculateCounterPrice(counter.elapsed, settings, multiplier)
+    const counterPrice = calculateCounterPrice(currentElapsed, settings, multiplier)
 
     // Calculate drinks total (exclude multiplier metadata)
     const realDrinks = (counter.drinks || []).filter(d => !d.__multiplier)
@@ -193,7 +172,7 @@ export function AppProvider({ children }) {
       tableNumber: null, // For backward compatibility
       startTime: counter.startTime,
       endTime: new Date().toISOString(),
-      duration: counter.elapsed,
+      duration: currentElapsed,
       price: totalPrice,
       counterPrice, // Price for counter time only
       drinksPrice: drinksTotal,
@@ -205,7 +184,7 @@ export function AppProvider({ children }) {
     // Update state immediately
     setCounters(prev => prev.map(c =>
       c.id === counterId
-        ? { ...c, active: false, startTime: null, elapsed: 0, drinks: [], multiplier: 1, startedBy: null }
+        ? { ...c, active: false, startTime: null, drinks: [], multiplier: 1, startedBy: null }
         : c
     ))
 
@@ -230,7 +209,7 @@ export function AppProvider({ children }) {
 
     // Update local state immediately
     setCounters(prev => prev.map(c =>
-      c.id === counterId ? { ...c, elapsed: newElapsedSeconds, startTime: newStartTime } : c
+      c.id === counterId ? { ...c, startTime: newStartTime } : c
     ))
 
     // Persist to DB

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react'
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { useApp } from '@/context/AppContext'
 import { useAuth, useIsSuperAdmin } from '@/context/AuthContext'
 import { getBillItems } from '@/lib/storage'
@@ -35,6 +35,7 @@ import {
     Printer,
     Clock3,
     X,
+    CalendarDays,
 } from 'lucide-react'
 
 // ─── Per-counter type helpers ───────────────────────────────────────────────
@@ -312,7 +313,7 @@ function BillCard({ bill, onPay, onDelete, user, counterName }) {
                             <DialogDescription>Ticket prêt pour imprimante thermique</DialogDescription>
                         </DialogHeader>
                         <div className="max-h-[60vh] overflow-y-auto border rounded-lg p-4" style={{ backgroundColor: '#f9fafb' }}>
-                            <PrintReceipt bill={bill} billItems={billItems} />
+                            <PrintReceipt bill={bill} billItems={billItems} counterName={counterName} />
                         </div>
                         <DialogFooter>
                             <Button variant="outline" onClick={() => setShowPrint(false)}>Fermer</Button>
@@ -342,6 +343,12 @@ export default function Bills() {
     const [counterFilter, setCounterFilter] = useState('all')
     const [timeFrom, setTimeFrom]           = useState('')
     const [timeTo, setTimeTo]               = useState('')
+
+    // Default date for the filter (today)
+    const today = useMemo(() => new Date().toISOString().split('T')[0], [])
+    const dateInputRef = useRef(null)
+    const [selectedDate, setSelectedDate] = useState(today)
+    const displayDateLabel = selectedDate === today ? "today" : selectedDate
 
     // Build counterId → counterName lookup
     const counterNameMap = useMemo(() => {
@@ -374,6 +381,16 @@ export default function Bills() {
             // Counter filter
             const matchCounter = counterFilter === 'all' || b.counterId === counterFilter
 
+            // Date filter (compare YYYY-MM-DD)
+            let matchDate = true
+            if (selectedDate) {
+                const raw = b.startTime || b.createdAt
+                if (raw) {
+                    const billDate = new Date(raw).toISOString().split('T')[0]
+                    matchDate = billDate === selectedDate
+                }
+            }
+
             // Time-of-day range filter (compares HH:MM string)
             let matchTime = true
             if (timeFrom || timeTo) {
@@ -386,9 +403,9 @@ export default function Bills() {
                 }
             }
 
-            return matchSearch && matchCounter && matchTime
+            return matchSearch && matchCounter && matchDate && matchTime
         })
-    }, [bills, search, counterFilter, timeFrom, timeTo, getCounterLabel])
+    }, [bills, search, counterFilter, selectedDate, timeFrom, timeTo, getCounterLabel])
 
     const filteredUnpaid = useMemo(() => filteredBills.filter(b => !b.paid), [filteredBills])
     const filteredPaid   = useMemo(() => filteredBills.filter(b =>  b.paid), [filteredBills])
@@ -396,7 +413,7 @@ export default function Bills() {
     const totalUnpaid = useMemo(() => filteredUnpaid.reduce((s, b) => s + b.price, 0), [filteredUnpaid])
     const totalPaid   = useMemo(() => filteredPaid.reduce((s, b) => s + b.price, 0),   [filteredPaid])
 
-    const isFiltered = search || counterFilter !== 'all' || timeFrom || timeTo
+    const isFiltered = search || counterFilter !== 'all' || selectedDate !== today || timeFrom || timeTo
 
     return (
         <div className="space-y-6">
@@ -506,33 +523,53 @@ export default function Bills() {
                 {/* Row 3: Time-range filter — SuperAdmin only */}
                 {isSuperAdmin && (
                     <div className="flex flex-wrap items-center gap-3 p-3 rounded-lg border border-border/40 bg-card/30">
-                        <span className="text-sm text-muted-foreground flex items-center gap-1.5">
-                            <Clock3 className="w-4 h-4" />
-                            Plage horaire (aujourd'hui) :
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    dateInputRef.current?.showPicker?.() || dateInputRef.current?.focus?.()
+                                }}
+                                className="flex items-center gap-1.5 text-sm text-muted-foreground bg-card/50 border border-border/50 rounded px-2 py-1 hover:bg-card/70 hover:text-foreground cursor-pointer"
+                            >
+                                <CalendarDays className="w-4 h-4" />
+                                Plage horaire ({displayDateLabel}) :
+                            </button>
+
+                            <Input
+                                ref={dateInputRef}
+                                id="bill-date-picker"
+                                type="date"
+                                value={selectedDate}
+                                onChange={(e) => setSelectedDate(e.target.value)}
+                                className="w-40"
+                            />
+                        </div>
+
                         <div className="flex items-center gap-2">
                             <span className="text-xs text-muted-foreground">De</span>
                             <Input
                                 type="time"
                                 value={timeFrom}
-                                onChange={e => setTimeFrom(e.target.value)}
-                                className="w-32 h-8 bg-card/50 border-border/50 text-sm"
+                                onChange={(e) => setTimeFrom(e.target.value)}
+                                className="w-32"
                             />
                         </div>
+
                         <div className="flex items-center gap-2">
                             <span className="text-xs text-muted-foreground">À</span>
                             <Input
                                 type="time"
                                 value={timeTo}
-                                onChange={e => setTimeTo(e.target.value)}
-                                className="w-32 h-8 bg-card/50 border-border/50 text-sm"
+                                onChange={(e) => setTimeTo(e.target.value)}
+                                className="w-32"
                             />
                         </div>
-                        {(timeFrom || timeTo) && (
+
+                        {(selectedDate !== today || timeFrom || timeTo) && (
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => { setTimeFrom(''); setTimeTo('') }}
+                                onClick={() => { setSelectedDate(today); setTimeFrom(''); setTimeTo('') }}
                                 className="h-8 text-muted-foreground hover:text-foreground"
                             >
                                 <X className="w-3.5 h-3.5 mr-1" />
@@ -554,7 +591,6 @@ export default function Bills() {
                     </p>
                 )}
             </div>
-
             {/* ── Bills tabs ── */}
             <Tabs defaultValue="unpaid" className="space-y-4">
                 <TabsList className="bg-card border border-border/50 p-1">

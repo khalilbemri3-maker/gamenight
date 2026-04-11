@@ -18,13 +18,33 @@ import DrinkSelectionDialog from '@/components/DrinkSelectionDialog'
 import { formatDuration, formatPrice, formatTime, calculateCounterPrice } from '@/lib/utils'
 import { Play, Square, Clock, DollarSign, Timer, Plus, Trash2, Settings, Coffee, Clock2 } from 'lucide-react'
 
+// Helper function to calculate current elapsed time for a counter
+function getCurrentElapsed(counter) {
+  if (!counter.active || !counter.startTime) return 0
+  const startTimestamp = new Date(counter.startTime).getTime()
+  return Math.floor((Date.now() - startTimestamp) / 1000)
+}
+
 function CounterCard({ counter, settings, onStart, onStop, onEdit, onDelete, onOpenDrinks, onAdjustTime, isSuperAdmin, currentUser }) {
     const isActive = counter.active
     const multiplier = counter.multiplier || 1
-    const price = isActive ? calculateCounterPrice(counter.elapsed, settings, multiplier) : 0
+    const [currentTime, setCurrentTime] = useState(Date.now())
+    const elapsed = getCurrentElapsed(counter)
+    const price = isActive ? calculateCounterPrice(elapsed, settings, multiplier) : 0
     const [editing, setEditing] = useState(false)
     const [editName, setEditName] = useState(counter.name)
     const inputRef = useRef(null)
+
+    // Update current time every second for active counters
+    useEffect(() => {
+        if (!isActive) return
+
+        const interval = setInterval(() => {
+            setCurrentTime(Date.now())
+        }, 1000)
+
+        return () => clearInterval(interval)
+    }, [isActive])
 
     const drinksCount = counter.drinks?.length > 0
         ? counter.drinks.filter(d => !d.__multiplier).reduce((sum, d) => sum + d.quantity, 0)
@@ -169,7 +189,7 @@ function CounterCard({ counter, settings, onStart, onStop, onEdit, onDelete, onO
                         font-mono-timer text-4xl font-bold tracking-wider
                         ${isActive ? 'text-orange-400' : 'text-muted-foreground/40'}
                     `}>
-                        {formatDuration(counter.elapsed)}
+                        {formatDuration(elapsed)}
                     </div>
                     {isActive && (
                         <div className="flex items-center justify-center gap-4 mt-3 text-sm text-muted-foreground">
@@ -261,9 +281,10 @@ export default function Compteurs() {
     const [adjustSeconds, setAdjustSeconds] = useState('0')
 
     const handleOpenAdjustTime = (counter) => {
-        const h = Math.floor(counter.elapsed / 3600)
-        const m = Math.floor((counter.elapsed % 3600) / 60)
-        const s = counter.elapsed % 60
+        const currentElapsed = getCurrentElapsed(counter)
+        const h = Math.floor(currentElapsed / 3600)
+        const m = Math.floor((currentElapsed % 3600) / 60)
+        const s = currentElapsed % 60
         setAdjustHours(String(h))
         setAdjustMinutes(String(m))
         setAdjustSeconds(String(s))
